@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib import cm
 
 # Container
 header = st.container()
@@ -8,7 +10,7 @@ rank_kumulatif = st.expander("Negara Produsen Minyak Terbesar", expanded=False)
 rank_tahun = st.expander("Negara Produsen Minyak Terbesar per Tahun", expanded=False)
 negara_filter = st.expander("Filter Negara Berdasarkan Produksi Minyak", expanded=False)
 
-# Input data
+# Input data dan assign ke sebuah variabel untuk membentuk objek
 df = pd.read_csv('produksi_minyak_mentah.csv', index_col="kode_negara")
 df_neg = pd.read_json("kode_negara_lengkap.json")
 
@@ -22,6 +24,9 @@ df.reset_index(inplace=True)
 # Buat list negara tanpa duplikat
 list_negara = [(df_neg.loc[df_neg['alpha-3'] == negara].values[0][0]) for negara in df['kode_negara'].unique().tolist()]
 
+# Ambil colormap 'Pastel1' dari matplotlib.cm
+colormap = cm.get_cmap('Pastel1')
+
 # Menuliskan data negara satu per satu dari parameter yang diberikan menjadi markdown
 def show_negara(nama, alpha3, region, subregion, total_prod, tertinggi_sum=None, tertinggi_tahun=None):
     st.markdown(f'Nama: **{nama}**')
@@ -33,7 +38,7 @@ def show_negara(nama, alpha3, region, subregion, total_prod, tertinggi_sum=None,
         return
     st.markdown(f'Dengan produksi tahunan tertinggi: **{tertinggi_sum}** pada tahun **{tertinggi_tahun}**')
 
-# Buat tabel data
+# Memasukkan data ke sebuah tabel dan kemudian menampilkannya
 def show_table(nama, alpha3, region, subregion, total_prod):
     f_table = pd.DataFrame()
     f_table['Nama'] = f_table.append({'Nama':nama}, ignore_index=True)
@@ -46,7 +51,7 @@ def show_table(nama, alpha3, region, subregion, total_prod):
 # Header
 with header:
     st.markdown("# PetroCount.")
-    st.info("*PetroCount.* adalah aplikasi yang dapat digunakan untuk menghitung data produksi minyak untuk seluruh negara di dunia.")
+    st.info("*PetroCount.* adalah aplikasi yang dapat digunakan untuk mengecek data produksi minyak mentah di seluruh negara di dunia.")
     st.image('offshore.jpg')
     st.markdown("***")
 
@@ -58,20 +63,24 @@ with tahun_minyak:
     alpha3Negara = df_neg[df_neg["name"] == selectNegara]["alpha-3"].values[0]
     st.write(f'{selectNegara} ({alpha3Negara})')
     # Cari data yang negaranya sesuai kemudian ambil tahun dan jumlah produksinya
-    display_data = df[df["kode_negara"] == alpha3Negara][['tahun', 'produksi']].rename(columns={'tahun':'index'}).set_index('index')
+    display_data = df[df["kode_negara"] == alpha3Negara][['tahun', 'produksi']]
     # Tampilkan data
-    st.bar_chart(display_data)
+    fig, ax = plt.subplots()
+    ax.plot(display_data['tahun'], display_data['produksi'], color='green')
+    st.pyplot(fig)
 
-# rank negara tahunan
+# Rank negara tahunan
 with rank_tahun:
     # Input user
     t_inp = st.slider('Tahun Produksi', min_value=1971, max_value=2020, value=1971, step=1)
     n_inp = st.slider('Banyak Ranking', 1, len(list_negara), value=10, step=1)
     # Cari data yang tahunnya sesuai kemudian disortir dari atas ke bawha
     tahun = df.loc[df["tahun"] == int(t_inp)].sort_values(["produksi"],ascending=[0])[:n_inp].reset_index(drop=True)
-    tahun_out = tahun[['kode_negara', 'produksi']].rename(columns={'kode_negara':'index'}).set_index('index')
+    tahun_out = tahun[['kode_negara', 'produksi']].rename(columns={'kode_negara':'index'})
     # Tampilkan data
-    st.bar_chart(tahun_out)
+    fig, ax = plt.subplots()
+    ax.bar(tahun_out['index'], tahun_out['produksi'], color=colormap.colors[:len(tahun_out['index']),])
+    st.pyplot(fig)
 
 # Rank negara kumulatif
 with rank_kumulatif:
@@ -79,14 +88,15 @@ with rank_kumulatif:
     n_inp = st.slider('Banyak Ranking Negara', 1, len(list_negara), value=10, step=1)
     # Grup data berdasarkan kode negara kemudian jumlahkan semua produksinya dan sortir dari atas ke bawah
     prod_sum = df[['kode_negara', 'produksi']].groupby('kode_negara', as_index=False).sum().sort_values(['produksi'], ascending=[0]).reset_index(drop=True)[:int(n_inp)].reset_index(drop=True)
-    prod_sum_out = prod_sum[['kode_negara', 'produksi']].rename(columns={'kode_negara':'index'}).set_index('index')
+    prod_sum_out = prod_sum[['kode_negara', 'produksi']].rename(columns={'kode_negara':'index'})
     # Tampilkan data
-    st.bar_chart(prod_sum_out)
-
+    fig, ax = plt.subplots()
+    ax.bar(prod_sum_out['index'], prod_sum_out['produksi'], color=colormap.colors[:len(tahun_out['index'])])
+    st.pyplot(fig)
 
 with negara_filter:
     # Input user
-    filter = st.radio('Filter', ['Tertinggi', 'Terkecil', 'Nol'])
+    filter = st.radio('Filter', ['Tertinggi', 'Terendah', 'Nol'])
     waktu = st.radio('Jangka Waktu', ['Semua', 'Tahun'])
     if filter == 'Tertinggi':
         if waktu == 'Tahun':
@@ -115,7 +125,7 @@ with negara_filter:
             st.markdown(f'#### Negara Produksi Tertinggi di Semua Waktu')
             # Tampilkan data
             show_table(nama, kode, reg, subreg, prod)
-    elif filter == 'Terkecil':
+    elif filter == 'Terendah':
         if waktu == 'Tahun':
             try:
                 # Input user
@@ -160,7 +170,7 @@ with negara_filter:
         region = []
         subregion = []
         for _, row in df0_prod.iterrows():
-            # Iterasi dataset
+            # Iterasi dataset yang telah di filter 0 untuk mengappend tiap row dengan kode negara sebagai index
             kode = row['kode_negara']
             nama.append(df_neg[df_neg['alpha-3'] == kode]['name'].values[0])
             region.append(df_neg[df_neg['alpha-3'] == kode]['region'].values[0])
