@@ -1,7 +1,5 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib import cm
 
 # Container
 header = st.container()
@@ -23,9 +21,6 @@ df.reset_index(inplace=True)
 
 # Buat list negara tanpa duplikat
 list_negara = [(df_neg.loc[df_neg['alpha-3'] == negara].values[0][0]) for negara in df['kode_negara'].unique().tolist()]
-
-# Ambil colormap 'Pastel1' dari matplotlib.cm
-colormap = cm.get_cmap('Pastel1')
 
 # Menuliskan data negara satu per satu dari parameter yang diberikan menjadi markdown
 def show_negara(nama, alpha3, region, subregion, total_prod, tertinggi_sum=None, tertinggi_tahun=None):
@@ -63,11 +58,9 @@ with tahun_minyak:
     alpha3Negara = df_neg[df_neg["name"] == selectNegara]["alpha-3"].values[0]
     st.write(f'{selectNegara} ({alpha3Negara})')
     # Cari data yang negaranya sesuai kemudian ambil tahun dan jumlah produksinya
-    display_data = df[df["kode_negara"] == alpha3Negara][['tahun', 'produksi']]
+    display_data = df[df["kode_negara"] == alpha3Negara][['tahun', 'produksi']].rename(columns={'tahun':'index'}).set_index('index')
     # Tampilkan data
-    fig, ax = plt.subplots()
-    ax.plot(display_data['tahun'], display_data['produksi'], color='green')
-    st.pyplot(fig)
+    st.bar_chart(display_data)
 
 # Rank negara tahunan
 with rank_tahun:
@@ -76,11 +69,10 @@ with rank_tahun:
     n_inp = st.slider('Banyak Ranking', 1, len(list_negara), value=10, step=1)
     # Cari data yang tahunnya sesuai kemudian disortir dari atas ke bawha
     tahun = df.loc[df["tahun"] == int(t_inp)].sort_values(["produksi"],ascending=[0])[:n_inp].reset_index(drop=True)
-    tahun_out = tahun[['kode_negara', 'produksi']].rename(columns={'kode_negara':'index'})
+    tahun_out = tahun[['kode_negara', 'produksi']].rename(columns={'kode_negara':'index'}).set_index('index')
     # Tampilkan data
-    fig, ax = plt.subplots()
-    ax.bar(tahun_out['index'], tahun_out['produksi'], color=colormap.colors[:len(tahun_out['index']),])
-    st.pyplot(fig)
+    # Tampilkan data
+    st.bar_chart(display_data)
 
 # Rank negara kumulatif
 with rank_kumulatif:
@@ -88,11 +80,9 @@ with rank_kumulatif:
     n_inp = st.slider('Banyak Ranking Negara', 1, len(list_negara), value=10, step=1)
     # Grup data berdasarkan kode negara kemudian jumlahkan semua produksinya dan sortir dari atas ke bawah
     prod_sum = df[['kode_negara', 'produksi']].groupby('kode_negara', as_index=False).sum().sort_values(['produksi'], ascending=[0]).reset_index(drop=True)[:int(n_inp)].reset_index(drop=True)
-    prod_sum_out = prod_sum[['kode_negara', 'produksi']].rename(columns={'kode_negara':'index'})
-    # Tampilkan data
-    fig, ax = plt.subplots()
-    ax.bar(prod_sum_out['index'], prod_sum_out['produksi'], color=colormap.colors[:len(tahun_out['index'])])
-    st.pyplot(fig)
+    prod_sum_out = prod_sum[['kode_negara', 'produksi']].rename(columns={'kode_negara':'index'}).set_index('index')
+    # tampilkan data
+    st.bar_chart(prod_sum_out)
 
 with negara_filter:
     # Input user
