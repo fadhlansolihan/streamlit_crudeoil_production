@@ -71,8 +71,7 @@ with rank_tahun:
     tahun = df.loc[df["tahun"] == int(t_inp)].sort_values(["produksi"],ascending=[0])[:n_inp].reset_index(drop=True)
     tahun_out = tahun[['kode_negara', 'produksi']].rename(columns={'kode_negara':'index'}).set_index('index')
     # Tampilkan data
-    # Tampilkan data
-    st.bar_chart(display_data)
+    st.bar_chart(tahun_out)
 
 # Rank negara kumulatif
 with rank_kumulatif:
